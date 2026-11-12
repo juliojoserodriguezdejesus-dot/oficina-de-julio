@@ -124,6 +124,24 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .chatform{display:flex;gap:8px;position:sticky;bottom:0;background:var(--panel-solid);padding-top:8px}
 .chatform input{flex:1;min-width:0}
 
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.drop{display:block;border:2px dashed var(--line);border-radius:10px;padding:20px;text-align:center;color:var(--muted);cursor:pointer}
+.drop b{color:var(--ink)}
+.drop:hover,.drop.over,.drop:focus-visible{border-color:var(--accent);outline:none}
+.docs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.doc{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:6px}
+.doc .dh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.doc .dh b{flex:1;min-width:0;overflow-wrap:anywhere}
+.doc pre{white-space:pre-wrap;font-size:12px;max-height:160px;overflow:auto;margin:0;color:var(--muted);background:var(--field);padding:8px;border-radius:6px;font-family:var(--f-mono)}
+.picker{display:flex;flex-wrap:wrap;gap:6px}
+.picker label{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12.5px;cursor:pointer;max-width:100%}
+.picker label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.picker input{accent-color:var(--brick)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{font-family:var(--f-mono);font-size:10.5px;padding:1px 7px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--muted);white-space:nowrap}
+.chip.m-quick{color:#7af0d2}.chip.m-default{color:#8fc1ff}.chip.m-complex{color:#ffb3d9}
+.msg.a .meta .chip{background:rgba(0,0,0,.2)}
+.two{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
 @media (max-width:900px){
   .app,.app.full{grid-template-columns:1fr;grid-template-rows:auto 56vh auto;height:auto}
   html,body{height:auto}
@@ -154,6 +172,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <li class="grp">Departamentos clave</li>
       <li><button data-s="datos"><span class="ic" style="--c:#5c6bc0"></span>Bases de Datos</button></li>
       <li><button data-s="seguridad"><span class="ic" style="--c:#546e7a"></span>Seguridad</button></li>
+      <li class="grp">Archivos</li>
+      <li><button data-s="documentos"><span class="ic" style="--c:#00a3da"></span>Documentos<span class="count" id="nDocs"></span></button></li>
       <li class="grp">Comunicación</li>
       <li><button data-s="chat"><span class="ic" style="--c:#2ec4b6"></span>Chat</button></li>
       <li><button data-s="historial"><span class="ic" style="--c:#8a5cd6"></span>Historial<span class="count" id="nHist"></span></button></li>
@@ -170,6 +190,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div><dt>Tareas hechas</dt><dd id="kDone">0</dd></div>
         <div><dt>Colaboraciones</dt><dd id="kCollab">0</dd></div>
         <div><dt>Contratados</dt><dd id="kHired">0</dd></div>
+        <div><dt>Tokens aprox.</dt><dd id="kTok">0</dd></div>
+        <div><dt>Documentos</dt><dd id="kDocs">0</dd></div>
       </dl>
       <div class="conn" id="conn">Conectando con Claude…</div>
     </div>
@@ -185,6 +207,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <form class="sec" id="form">
         <label class="lbl" for="task">Encargo para el jefe</label>
         <textarea id="task" placeholder="Ej.: Un cliente quiere una página para su panadería con menú, pedidos por WhatsApp y una cotización.">Un cliente con una panadería quiere una página web con menú, pedidos por WhatsApp y formulario de contacto seguro. Prepara la cotización y la estructura de la página.</textarea>
+        <div class="two">
+          <div><label class="lbl" for="policy">Uso de tokens</label>
+            <select id="policy">
+              <option value="auto">Automático: el jefe elige el modelo de cada paso</option>
+              <option value="ahorro">Máximo ahorro: todo con el modelo rápido</option>
+              <option value="calidad">Máxima calidad: modelos más potentes</option>
+            </select></div>
+          <div class="sec"><h3><span>Documentos para este encargo</span><span id="taskDocsTok"></span></h3><div class="picker" id="taskDocs"></div></div>
+        </div>
         <div class="row">
           <button class="b primary" id="go" type="submit">Repartir tarea</button>
           <span class="note" id="status">Listo para recibir encargos.</span>
@@ -195,8 +226,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <ol class="steps" id="steps"></ol>
       </section>
       <section class="sec" id="finalSec" hidden>
-        <h3><span>Entrega final</span><button class="b sm" type="button" id="copy">Copiar</button></h3>
+        <h3><span>Entrega final</span><span id="runTokens" class="chip"></span></h3>
         <div class="final" id="final"></div>
+        <div class="row" id="dlRow">
+          <button class="b sm" type="button" data-fmt="docx">Descargar Word</button>
+          <button class="b sm" type="button" data-fmt="html">Descargar HTML</button>
+          <button class="b sm" type="button" data-fmt="md">Descargar Markdown</button>
+          <button class="b sm" type="button" id="copy">Copiar</button>
+          <span class="note" id="dlNote"></span>
+        </div>
       </section>
     </section>
 
@@ -204,9 +242,22 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <section class="sect" id="s-datos" hidden></section>
     <section class="sect" id="s-seguridad" hidden></section>
 
+    <section class="sect" id="s-documentos" hidden>
+      <p class="lead">Sube la información de tus clientes: briefs, listas de productos, precios, textos o logos. Al encargar una tarea eliges qué documentos usar, y el jefe le pasa a cada agente solo los que necesita para no gastar tokens de más.</p>
+      <label class="drop" id="drop" for="fileIn" tabindex="0"><b>Arrastra archivos aquí o toca para elegir</b><br><span>PDF, Word (.docx), TXT, Markdown, CSV, HTML, JSON e imágenes · hasta 20 MB</span></label>
+      <input class="sr" type="file" id="fileIn" multiple accept=".pdf,.docx,.txt,.md,.csv,.html,.htm,.json,image/png,image/jpeg,image/webp,image/gif">
+      <p class="note" id="docStatus" aria-live="polite"></p>
+      <ul class="docs" id="docList"></ul>
+    </section>
+
     <section class="sect" id="s-chat" hidden>
       <div><label class="lbl" for="chatSel">Hablar con</label><select id="chatSel"></select></div>
       <div class="chathead"><span class="dot" id="chatDot"></span><div><b id="chatName"></b><small id="chatRole"></small></div></div>
+      <div class="two" style="margin-top:0">
+        <div><label class="lbl" for="chatModel">Modelo</label>
+          <select id="chatModel"><option value="auto">Automático (según el mensaje)</option><option value="quick">Rápido · gasta menos</option><option value="default">Normal</option><option value="complex">Avanzado · gasta más</option></select></div>
+        <div class="sec"><h3><span>Documentos en esta conversación</span><span id="chatDocsTok"></span></h3><div class="picker" id="chatDocs"></div></div>
+      </div>
       <div class="msgs" id="msgs" aria-live="polite"></div>
       <form class="chatform" id="chatForm">
         <input type="text" id="chatIn" autocomplete="off" placeholder="Escribe un mensaje…" aria-label="Mensaje">
@@ -302,6 +353,143 @@ const colorOf = a => deptOf(a.dept)?.color || a.color || '#888';
 const isCore = a => a.dept === CORE;
 const lastOut = {};
 let chatId = 'director', chatBusy = false; const chats = {};
+
+
+// ================= Documents & tokens =================
+let docs = [];                       // {id, nombre, tipo, tamano, assetId, texto, palabras, tokens, recortado, creado}
+const localBlobs = {};               // images kept in memory when the asset store is unavailable
+const selTask = new Set(), selChat = new Set();
+let assets = null, downloads = null, limits = null;
+const tok = s => Math.ceil(String(s || '').length / 4);               // shortcut: ~4 characters per token, good enough for an estimate
+const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n);
+const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const TIER = {rapido:'quick', normal:'default', avanzado:'complex'};
+const TIER_LABEL = {quick:'Rápido', default:'Normal', complex:'Avanzado'};
+const DOC_MAX = 50000, DOC_PER_STEP = 12000;
+const LIBS = {
+  pdf:['https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js', 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'],
+  word:['https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js'],
+  docx:['https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js'],
+  md:['https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js']
+};
+const loadedLibs = {};
+function loadScript(src){
+  return loadedLibs[src] ||= new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = src; sc.onload = res;
+    sc.onerror = () => { delete loadedLibs[src]; rej(new Error('no se pudo cargar una librería; revisa tu conexión')); };
+    document.head.append(sc);
+  });
+}
+const need = async k => { for (const u of LIBS[k]) await loadScript(u); };
+function kindOf(f){
+  const n = f.name.toLowerCase();
+  if (/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return 'imagen';
+  if (n.endsWith('.pdf')) return 'pdf';
+  if (n.endsWith('.docx')) return 'word';
+  if (/\.(txt|md|csv|html?|json)$/.test(n)) return 'texto';
+  return null;
+}
+async function extractText(f, kind){
+  if (kind === 'texto'){
+    const t = await f.text();
+    if (!/\.html?$/i.test(f.name)) return t;
+    const d = new DOMParser().parseFromString(t, 'text/html');   // parsed, never rendered or run
+    d.querySelectorAll('script,style').forEach(n => n.remove());
+    return d.body ? d.body.textContent : t;
+  }
+  if (kind === 'word'){ await need('word'); return (await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value; }
+  if (kind === 'pdf'){
+    await need('pdf'); pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdf[1];
+    const pdf = await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise, out = [];
+    for (let i = 1; i <= Math.min(pdf.numPages, 80); i++){ const c = await (await pdf.getPage(i)).getTextContent(); out.push(c.items.map(x => x.str).join(' ')); }
+    return out.join('\n\n');
+  }
+  return '';
+}
+const docStatus = (m, bad) => { const e = $('docStatus'); e.textContent = m; e.className = 'note' + (bad ? ' bad' : ''); };
+async function addFiles(files){
+  for (const f of files){
+    const kind = kindOf(f);
+    if (!kind){ docStatus(`${f.name}: ese tipo de archivo no es compatible.`, true); continue; }
+    if (f.size > 20 * 1048576){ docStatus(`${f.name} pesa más de 20 MB.`, true); continue; }
+    docStatus(`Leyendo ${f.name}…`);
+    try {
+      const raw = (await extractText(f, kind)).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      let assetId = null;
+      if (assets){ try { assetId = (await assets.upload(f)).id; } catch {} }
+      const d = {nombre:clip(f.name, 120), tipo:kind, tamano:f.size, assetId, texto:clip(raw, DOC_MAX), recortado:raw.length > DOC_MAX,
+                 palabras:raw ? raw.split(/\s+/).length : 0, tokens:tok(clip(raw, DOC_MAX)), creado:Date.now()};
+      if (db){ const ref = await db.collection('documentos').add(d); if (kind === 'imagen' && !assetId) localBlobs[ref.id] = f; }
+      else { const id = 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); docs = [{id, ...d}, ...docs]; if (kind === 'imagen') localBlobs[id] = f; renderDocs(); }
+      docStatus(kind === 'imagen' ? `${f.name} listo. Los agentes podrán verlo.` : !raw ? `${f.name} se guardó, pero no tiene texto que leer (¿es un PDF escaneado?).` : `${f.name} listo · ≈${fmtTok(d.tokens)} tokens${d.recortado ? ' (recortado: es muy largo)' : ''}.`);
+    } catch (e){ docStatus(`No pude leer ${f.name}: ${e.message || e.code || e}`, true); }
+  }
+}
+async function imageBlob(d){
+  if (localBlobs[d.id]) return localBlobs[d.id];
+  if (!d.assetId) return null;
+  try { const r = await fetch('/_blob/' + d.assetId); return r.ok ? await r.blob() : null; } catch { return null; }
+}
+const TIPO = {pdf:'PDF', word:'Word', texto:'Texto', imagen:'Imagen'};
+function renderDocs(){
+  const ul = $('docList'); ul.replaceChildren();
+  for (const id of [...selTask]) if (!docs.some(d => d.id === id)) selTask.delete(id);
+  for (const id of [...selChat]) if (!docs.some(d => d.id === id)) selChat.delete(id);
+  if (!docs.length) ul.append(el('li', 'note', 'Todavía no hay documentos. Sube el primero arriba.'));
+  for (const d of docs){
+    const li = el('li', 'doc'), h = el('div', 'dh');
+    h.append(el('b', null, d.nombre), el('span', 'chip', TIPO[d.tipo] || d.tipo), el('span', 'chip', fmtSize(d.tamano || 0)));
+    if (d.tipo !== 'imagen') h.append(el('span', 'chip', `≈${fmtTok(d.tokens || 0)} tokens`));
+    const row = el('div', 'row'); row.style.marginTop = '0';
+    if (d.tipo !== 'imagen' && d.texto){ const v = el('button', 'b sm', 'Ver texto'); v.type = 'button'; const pre = el('pre', null, clip(d.texto, 3000) + (d.texto.length > 3000 ? '\n…' : '')); pre.hidden = true; v.onclick = () => { pre.hidden = !pre.hidden; v.textContent = pre.hidden ? 'Ver texto' : 'Ocultar texto'; }; row.append(v); li._pre = pre; }
+    if (d.tipo === 'imagen' && d.assetId){ const img = el('img'); img.src = '/_blob/' + d.assetId; img.alt = d.nombre; img.style.cssText = 'max-height:90px;border-radius:6px;align-self:flex-start'; li._img = img; }
+    const use = el('button', 'b sm', selTask.has(d.id) ? 'Quitar del encargo' : 'Usar en el encargo'); use.type = 'button';
+    use.onclick = () => { selTask.has(d.id) ? selTask.delete(d.id) : selTask.add(d.id); renderDocs(); };
+    const del = el('button', 'b sm', 'Borrar'); del.type = 'button';
+    del.onclick = async () => {
+      if (del.dataset.sure !== '1'){ del.dataset.sure = '1'; del.textContent = '¿Borrar? Toca otra vez'; setTimeout(() => { del.dataset.sure = ''; del.textContent = 'Borrar'; }, 3000); return; }
+      del.disabled = true;
+      try {
+        if (d.assetId && assets) await assets.delete(d.assetId).catch(() => {});
+        if (db && !d.id.startsWith('local-')) await db.collection('documentos').doc(d.id).delete();
+        else { docs = docs.filter(x => x.id !== d.id); renderDocs(); }
+        delete localBlobs[d.id]; docStatus(`${d.nombre} se borró.`);
+      } catch (e){ del.disabled = false; docStatus('No se pudo borrar: ' + (e.message || e.code || e), true); }
+    };
+    row.append(use, del);
+    li.append(h); if (li._img) li.append(li._img); if (d.recortado) li.append(el('span', 'note', 'Es muy largo: se guardaron los primeros 50 000 caracteres.'));
+    li.append(row); if (li._pre) li.append(li._pre); ul.append(li);
+  }
+  renderPicker('taskDocs', 'taskDocsTok', selTask);
+  renderPicker('chatDocs', 'chatDocsTok', selChat);
+  dirty = true;
+}
+function renderPicker(boxId, tokId, set){
+  const box = $(boxId); box.replaceChildren();
+  if (!docs.length){ const b = el('button', 'b sm', 'Subir documentos'); b.type = 'button'; b.onclick = () => show('documentos'); box.append(b); $(tokId).textContent = ''; return; }
+  for (const d of docs){
+    const lab = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = set.has(d.id);
+    cb.onchange = () => { cb.checked ? set.add(d.id) : set.delete(d.id); renderDocs(); };
+    lab.append(cb, el('span', null, d.nombre)); lab.title = d.tipo === 'imagen' ? 'Imagen' : `≈${fmtTok(d.tokens || 0)} tokens`; box.append(lab);
+  }
+  const n = [...set].reduce((a, id) => a + (docs.find(d => d.id === id)?.tokens || 0), 0);
+  $(tokId).textContent = set.size ? `≈${fmtTok(n)} tokens` : '';
+}
+async function docContext(list, budget){
+  let text = '', imgs = [], skipped = [];
+  for (const d of list){
+    if (d.tipo === 'imagen'){
+      const b = limits?.images && imgs.length < limits.images.maxCount ? await imageBlob(d) : null;
+      if (b && b.size <= limits.images.maxInputBytes && limits.images.mediaTypes.includes(b.type)) imgs.push(b); else skipped.push(d.nombre);
+      continue;
+    }
+    const room = budget - text.length; if (room < 500){ skipped.push(d.nombre); continue; }
+    text += `\n\n### Documento: ${d.nombre}\n${clip(d.texto, Math.min(DOC_PER_STEP, room))}`;
+  }
+  if (imgs.length) text += `\n\n(Se adjuntan ${imgs.length} imagen(es) de los documentos.)`;
+  if (skipped.length) text += `\n\n(No se pudieron incluir: ${skipped.join(', ')}.)`;
+  return {text, imgs};
+}
 
 // ================= Scene =================
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -635,6 +823,8 @@ function renderHud(){
   $('kDone').textContent = tasks.filter(t => t.estado === 'listo').length;
   $('kCollab').textContent = tasks.reduce((n, t) => n + (Array.isArray(t.pasos) ? t.pasos.length : 0), 0);
   $('kHired').textContent = custom.length;
+  $('kTok').textContent = fmtTok(tasks.reduce((n, t) => n + (Number(t.tokens) || 0), 0));
+  $('kDocs').textContent = docs.length; $('nDocs').textContent = docs.length || '';
   $('nTeam').textContent = list.length; $('nHist').textContent = tasks.length || '';
   const flow = $('flow'); flow.replaceChildren();
   for (const d of depts()){
@@ -645,7 +835,7 @@ function renderHud(){
   document.querySelectorAll('.pill[data-agent]').forEach(p => { const st = AG[p.dataset.agent]?.status || 'libre'; p.className = 'pill p-' + st; p.textContent = STATUS[st]; });
 }
 
-const TITLES = {tarea:'Encargar tarea', equipo:'Equipo', datos:'Bases de Datos', seguridad:'Seguridad', chat:'Chat', historial:'Historial'};
+const TITLES = {tarea:'Encargar tarea', equipo:'Equipo', datos:'Bases de Datos', seguridad:'Seguridad', documentos:'Documentos', chat:'Chat', historial:'Historial'};
 let section = 'oficina';
 function show(s){
   section = s;
@@ -713,7 +903,9 @@ buildDecor(); buildCampus(); ensureAgents(); resize(); step(); renderChatSel();
 
 (async () => {
   const use = n => window.claude?.use ? window.claude.use(n) : Promise.resolve(null);
-  [sample, db] = await Promise.all([use('sample'), use('db')]);
+  [sample, db, assets, downloads] = await Promise.all([use('sample'), use('db'), use('assets'), use('downloads')]);
+  if (sample) limits = await sample.limits().catch(() => null);
+  if (!downloads) $('dlNote').textContent = 'Las descargas no están disponibles en esta vista; usa Copiar.';
   $('conn').textContent = sample ? 'Claude en línea' : 'Abre esta página en claude.ai para que trabajen';
   $('conn').className = 'conn ' + (sample ? 'on' : 'off');
   if (!sample){ $('go').disabled = true; $('chatSend').disabled = true; status('Para que la oficina trabaje, abre esta página en claude.ai con tu sesión iniciada.', true); }
@@ -725,6 +917,7 @@ buildDecor(); buildCampus(); ensureAgents(); resize(); step(); renderChatSel();
       if (changed){ buildCampus(); ensureAgents(); renderChatSel(); if (section === 'equipo') renderTeam(); }
       dirty = true;
     }, () => {});
+    db.collection('documentos').orderBy('creado', 'desc').limit(100).onSnapshot(snap => { docs = snap.docs.map(d => ({id:d.id, ...d.data()})).filter(d => d.nombre); renderDocs(); }, () => {});
     db.collection('tareas').orderBy('creada', 'desc').limit(50).onSnapshot(snap => { tasks = snap.docs.map(d => ({id:d.id, ...d.data()})); renderHist(); dirty = true; }, () => {});
   }
 })();
@@ -738,11 +931,16 @@ function renderHist(){
     b.append(el('span', 't', it.texto || '(sin texto)'), tm); b.onclick = () => showPast(it); li.append(b); ul.append(li);
   }
 }
-renderHist();
+renderHist(); renderDocs();
 function showPast(it){
   show('tarea');
   $('runSec').hidden = false; $('runPlan').textContent = it.estado || '';
-  $('steps').replaceChildren(...(it.pasos || []).map(p => stepEl(byId(p.agente) || {name:p.agente, dept:''}, p.encargo, p.resultado, 'listo')));
+  $('steps').replaceChildren(...(it.pasos || []).map(p => {
+    const li = stepEl(byId(p.agente) || {name:p.agente, dept:''}, p.encargo, p.resultado, 'listo');
+    if (p.modelo){ const m = el('div', 'meta'); m.append(tierChip(p.modelo)); if (p.tokens) m.append(el('span', 'chip', `≈${fmtTok(p.tokens)} tokens`)); li.insertBefore(m, li._out); }
+    return li;
+  }));
+  lastTaskText = it.texto || ''; $('runTokens').textContent = it.tokens ? `≈${fmtTok(it.tokens)} tokens en total` : '';
   $('finalSec').hidden = !it.final; $('final').textContent = it.final || '';
 }
 function stepEl(a, encargo, out, st, isNew){
@@ -755,6 +953,18 @@ function stepEl(a, encargo, out, st, isNew){
 }
 const mark = (li, st) => { li._st.className = 'pill p-' + st; li._st.textContent = STATUS[st]; };
 
+// ================= Model choice =================
+const policyNow = () => $('policy').value;
+function pickTier(word, policy){
+  let t = TIER[norm(word)] || 'quick';
+  if (policy === 'ahorro') t = 'quick';
+  if (policy === 'calidad' && t === 'quick') t = 'default';
+  if (limits?.modelTiers && !limits.modelTiers.includes(t)) t = limits.modelTiers.includes('default') ? 'default' : 'inherit';
+  return t;
+}
+const tierChip = (t, why) => { const c = el('span', 'chip m-' + t, 'Modelo: ' + (TIER_LABEL[t] || t)); if (why) c.title = why; return c; };
+let lastTaskText = '';
+
 // ================= The boss runs a task =================
 let busy = false;
 $('form').addEventListener('submit', async ev => {
@@ -763,7 +973,9 @@ $('form').addEventListener('submit', async ev => {
   if (!texto || busy || !sample) return;
   busy = true; $('go').disabled = true;
   $('finalSec').hidden = true; $('runSec').hidden = false; $('steps').replaceChildren(); $('runPlan').textContent = '';
-  const boss = AG.director; let ids = [], taskRef = null;
+  const boss = AG.director; let ids = [], taskRef = null, totalTok = 0;
+  const policy = policyNow(), attached = docs.filter(d => selTask.has(d.id));
+  lastTaskText = texto; $('runTokens').textContent = '';
   try {
     boss.mode = 'busy'; setStatus('director', 'trabajando'); setBubble('director', 'Planeando…'); status('El jefe está leyendo tu encargo…');
     walk(boss, [coreSpot('director')], ORIGIN);
@@ -775,12 +987,17 @@ $('form').addEventListener('submit', async ev => {
 Equipo actual (JSON): ${JSON.stringify(team)}
 Departamentos: ${deptRoom}. Se pueden abrir ${newDeptRoom} departamentos nuevos.
 Encargo de Julio, el dueño: """${texto}"""
+Documentos que adjuntó Julio: ${attached.length ? JSON.stringify(attached.map(d => ({nombre:d.nombre, tipo:d.tipo, tokens:d.tokens, inicio:clip(d.texto, 300)}))) : 'ninguno'}
 
-Divide el encargo en 2 a 6 pasos en orden y asigna cada paso al agente más especializado.
+Divide el encargo en 2 a 6 pasos en orden y asigna cada paso al agente más especializado. Usa el menor número de pasos que haga bien el trabajo: cada paso gasta tokens.
+Para cada paso elige "modelo" pensando en ahorrar tokens: "rapido" para textos cortos, mensajes, listas, resúmenes y revisiones sencillas; "normal" para código de páginas, cotizaciones con cálculos, bases de datos y textos largos; "avanzado" solo para arquitectura compleja, auditorías de seguridad profundas o mucho código. Escoge el más barato que lo haga bien.
+${policy === 'ahorro' ? 'Julio pidió máximo ahorro: todo irá con el modelo rápido.' : policy === 'calidad' ? 'Julio pidió máxima calidad: puedes usar "normal" o "avanzado" donde ayude.' : ''}
+En "documentos" pon solo los nombres de documentos que ese paso necesita leer (vacío si ninguno).
 Si ningún agente sabe hacer una parte, contrata uno nuevo (máximo 2) en "nuevos": ponlo en un departamento existente con lugar libre, o en uno nuevo si ninguno encaja.
 No te asignes pasos a ti. Responde SOLO con JSON con esta forma:
-{"resumen":"una frase","nuevos":[{"id":"kebab-case","nombre":"Nombre corto","rol":"Rol","departamento":"Nombre del departamento","especialidad":"qué sabe hacer, una frase","como":"cómo trabaja, una frase"}],"pasos":[{"agente":"id","encargo":"qué debe hacer, una o dos frases"}]}`,
-      {modelTier:'default', cache:false});
+{"resumen":"una frase","nuevos":[{"id":"kebab-case","nombre":"Nombre corto","rol":"Rol","departamento":"Nombre del departamento","especialidad":"qué sabe hacer, una frase","como":"cómo trabaja, una frase"}],"pasos":[{"agente":"id","encargo":"qué debe hacer, una o dos frases","modelo":"rapido|normal|avanzado","por_que":"una frase","documentos":["nombre"]}],"modelo_entrega":"rapido|normal"}`,
+      {modelTier:pickTier(policy === 'ahorro' ? 'rapido' : 'normal', policy), cache:false});
+    totalTok += tok(JSON.stringify(plan)) + 900 + tok(texto) + attached.length * 80;
 
     // hire (model output is untrusted: validate, clip, respect seats and slots)
     const hired = [];
@@ -804,11 +1021,17 @@ No te asignes pasos a ti. Responde SOLO con JSON con esta forma:
       if (db) for (const {a} of hired){ const {id, hired:_, ...data} = a; db.collection('agentes').doc(id).set(data).catch(() => {}); }
     }
     const remap = Object.fromEntries(hired.flatMap(h => [[h.oldId, h.a.id], [h.a.name, h.a.id]]));
-    const pasos = (Array.isArray(plan?.pasos) ? plan.pasos : []).map(p => ({agente: byId(p?.agente) ? p.agente : remap[p?.agente], encargo:clip(p?.encargo, 400)}))
+    const pasos = (Array.isArray(plan?.pasos) ? plan.pasos : []).map(p => ({agente: byId(p?.agente) ? p.agente : remap[p?.agente], encargo:clip(p?.encargo, 400),
+        tier:pickTier(p?.modelo, policy), porque:clip(p?.por_que, 160),
+        docs:attached.filter(d => Array.isArray(p?.documentos) && p.documentos.some(n => norm(n) === norm(d.nombre)))}))
       .filter(p => p.agente && p.agente !== 'director' && AG[p.agente] && p.encargo).slice(0, 6);
     if (!pasos.length) throw new Error('El jefe no pudo armar un plan. Describe el encargo con un poco más de detalle.');
     $('runPlan').textContent = clip(plan.resumen, 80);
-    const els = pasos.map(p => { const li = stepEl(byId(p.agente), p.encargo, '', 'reunion', hired.some(h => h.a.id === p.agente)); $('steps').append(li); return li; });
+    const els = pasos.map(p => {
+      const li = stepEl(byId(p.agente), p.encargo, '', 'reunion', hired.some(h => h.a.id === p.agente));
+      const m = el('div', 'meta'); m.append(tierChip(p.tier, p.porque)); for (const d of p.docs) m.append(el('span', 'chip', '📄 ' + d.nombre));
+      li.insertBefore(m, li._out); li._meta = m; $('steps').append(li); return li;
+    });
 
     ids = [...new Set(pasos.map(p => p.agente))];
     setBubble('director', '¡Reunión de equipo!'); status('El jefe llamó a reunión en el núcleo…');
@@ -829,18 +1052,22 @@ No te asignes pasos a ti. Responde SOLO con JSON con esta forma:
       await within(atDesk[a.id], 30000);
       ag.mode = 'working'; setStatus(a.id, 'trabajando'); setBubble(a.id, 'Trabajando…'); mark(li, 'trabajando'); status(`${a.name} está trabajando en ${dn}…`);
       const previo = done.map(x => `### ${byId(x.agente).name}\n${x.resultado}`).join('\n\n') || '(eres el primero)';
-      const r = await sample(
+      const ctx = await docContext(p.docs, 24000);
+      const prompt =
 `Eres "${a.name}", ${a.role} en Oficinas de Julio (departamento ${dn}), una agencia que vende páginas web.
 Tu especialidad: ${a.desc}${a.how ? '\nCómo trabajas: ' + a.how : ''}
 Tu jefe te encargó esto dentro del encargo de Julio: """${texto}"""
 Trabajo que ya hicieron tus compañeros:
 ${previo}
 
-Tu encargo: ${p.encargo}
-Haz solo tu parte, en español, concreta y lista para usar (máximo 300 palabras; si es código, entrégalo completo).`,
-        {modelTier:'quick', cache:false, onText:({text}) => { li._out.textContent = text; }});
+Tu encargo: ${p.encargo}${ctx.text ? '\n\nDocumentos de Julio para tu parte:' + ctx.text : ''}
+Haz solo tu parte, en español, concreta y lista para usar (máximo 300 palabras; si es código, entrégalo completo).`;
+      const r = await sample(prompt, {modelTier:p.tier, cache:false, ...(ctx.imgs.length ? {images:ctx.imgs} : {}), onText:({text}) => { li._out.textContent = text; }});
       li._out.textContent = r.text; lastOut[a.id] = r.text;
-      done.push({agente:a.id, encargo:p.encargo, resultado:r.text});
+      const used = tok(prompt) + tok(r.text) + ctx.imgs.length * 1500; totalTok += used;
+      if (r.modelApplied) li._meta.append(el('span', 'chip', r.modelApplied));
+      li._meta.append(el('span', 'chip', `≈${fmtTok(used)} tokens`)); $('runTokens').textContent = `≈${fmtTok(totalTok)} tokens`;
+      done.push({agente:a.id, encargo:p.encargo, resultado:r.text, modelo:r.modelTierApplied || p.tier, tokens:used});
       ag.mode = 'busy'; setStatus(a.id, 'listo'); setBubble(a.id, '¡Listo, jefe!'); mark(li, 'listo');
     }
 
@@ -852,10 +1079,12 @@ Partes entregadas por tu equipo:
 ${done.map(x => `### ${byId(x.agente).name} (${deptOf(byId(x.agente).dept)?.name})\n${x.resultado}`).join('\n\n')}
 
 Revisa y une todo en una sola entrega final, ordenada y lista para usar, en español. Corrige contradicciones. Si hay código, ponlo completo una sola vez.`,
-      {modelTier:'default', cache:false, onText:({text}) => { $('final').textContent = text; }});
+      {modelTier:pickTier(plan?.modelo_entrega === 'rapido' ? 'rapido' : 'normal', policy), cache:false, onText:({text}) => { $('final').textContent = text; }});
     $('final').textContent = fin.text; lastOut.director = fin.text;
+    totalTok += tok(fin.text) * 2 + done.reduce((n, x) => n + tok(x.resultado), 0) + 200;
+    $('runTokens').textContent = `≈${fmtTok(totalTok)} tokens en total`;
     setStatus('director', 'listo'); setBubble('director', '¡Entregado!'); status('Listo. La entrega está abajo.');
-    if (taskRef) await taskRef.update({estado:'listo', pasos:done, final:fin.text}).catch(() => {});
+    if (taskRef) await taskRef.update({estado:'listo', pasos:done, final:fin.text, tokens:totalTok, politica:policy, documentos:attached.map(d => d.nombre)}).catch(() => {});
   } catch (e){
     status(errMsg(e), true); setStatus('director', 'error'); setBubble('director', 'Hubo un problema');
     for (const id of ids) if (AG[id].status !== 'listo') setStatus(id, 'error');
@@ -870,6 +1099,68 @@ $('copy').onclick = async () => {
   catch { const r = document.createRange(); r.selectNodeContents($('final')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('copy').textContent = 'Seleccionado'; }
   setTimeout(() => $('copy').textContent = 'Copiar', 1500);
 };
+
+
+// ================= Downloads =================
+const dlNote = m => { $('dlNote').textContent = m; };
+function cleanHtml(html){                       // model output is untrusted: drop active content before saving
+  const d = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+  d.querySelectorAll('script,iframe,object,embed,link,meta,style,form,base').forEach(n => n.remove());
+  d.querySelectorAll('*').forEach(n => [...n.attributes].forEach(at => {
+    if (/^on/i.test(at.name) || (/^(href|src|xlink:href|action)$/i.test(at.name) && /^\s*(javascript|data|vbscript):/i.test(at.value))) n.removeAttribute(at.name);
+  }));
+  return d.body.innerHTML;
+}
+function htmlDoc(title, body){
+  const esc = t => t.replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.6;color:#1b1f3a}h1,h2,h3{line-height:1.2}pre{background:#f3f4f8;padding:12px;border-radius:8px;overflow:auto}code{font-family:Consolas,monospace}table{border-collapse:collapse}td,th{border:1px solid #ccd;padding:6px 10px}header{border-bottom:3px solid #f2c200;margin-bottom:24px}header small{color:#667}</style></head>
+<body><header><small>Oficinas de Julio · ${new Date().toLocaleDateString('es')}</small><h1>${esc(title)}</h1></header>${body}</body></html>`;
+}
+function mdToDocx(title, md){
+  const {Document, Paragraph, TextRun, HeadingLevel} = docx;
+  const H = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, HeadingLevel.HEADING_4, HeadingLevel.HEADING_5, HeadingLevel.HEADING_6];
+  const runs = t => t.split(/(\*\*[^*]+\*\*|`[^`]+`)/).filter(Boolean).map(x =>
+    x.length > 4 && x.startsWith('**') && x.endsWith('**') ? new TextRun({text:x.slice(2, -2), bold:true}) :
+    x.length > 2 && x.startsWith('`') && x.endsWith('`') ? new TextRun({text:x.slice(1, -1), font:'Consolas'}) : new TextRun(x));
+  const kids = [new Paragraph({heading:HeadingLevel.TITLE, children:[new TextRun(title)]}),
+                new Paragraph({children:[new TextRun({text:'Oficinas de Julio · ' + new Date().toLocaleDateString('es'), italics:true, color:'666677'})], spacing:{after:240}})];
+  let code = false;
+  for (const line of md.split('\n')){
+    if (/^\s*```/.test(line)){ code = !code; continue; }
+    if (code){ kids.push(new Paragraph({children:[new TextRun({text:line || ' ', font:'Consolas', size:19})], spacing:{after:0}})); continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)/), b = line.match(/^\s*[-*•]\s+(.*)/);
+    if (h) kids.push(new Paragraph({heading:H[h[1].length - 1], children:runs(h[2])}));
+    else if (b) kids.push(new Paragraph({bullet:{level:0}, children:runs(b[1])}));
+    else if (line.trim()) kids.push(new Paragraph({children:runs(line.trim()), spacing:{after:120}}));
+  }
+  return new Document({creator:'Oficinas de Julio', title, sections:[{children:kids}]});
+}
+async function download(fmt){
+  const text = $('final').textContent.trim(); if (!text) return;
+  if (!downloads){ dlNote('Las descargas no están disponibles en esta vista; usa Copiar.'); return; }
+  const title = clip(lastTaskText || 'Entrega', 90).replace(/\s+/g, ' ');
+  const base = 'entrega-' + slug(title).slice(0, 40) + '-' + new Date().toISOString().slice(0, 10);
+  dlNote('Preparando el archivo…');
+  try {
+    let data, filename;
+    if (fmt === 'md'){ data = new Blob([`# ${title}\n\n${text}\n`], {type:'text/markdown'}); filename = base + '.md'; }
+    else if (fmt === 'html'){ await need('md'); data = new Blob([htmlDoc(title, cleanHtml(marked.parse(text, {mangle:false, headerIds:false})))], {type:'text/html'}); filename = base + '.html'; }
+    else { await need('docx'); data = await docx.Packer.toBlob(mdToDocx(title, text)); filename = base + '.docx'; }
+    await downloads.save({filename, data});
+    dlNote('Archivo listo: ' + filename);
+  } catch (e){
+    dlNote(e?.code === 'declined' ? '' : e?.code === 'unavailable' ? 'Las descargas no están disponibles en esta vista; usa Copiar.' : 'No se pudo descargar: ' + (e?.message || e?.code || e));
+  }
+}
+document.querySelectorAll('#dlRow [data-fmt]').forEach(b => b.onclick = () => download(b.dataset.fmt));
+
+// ================= Upload wiring =================
+$('fileIn').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+$('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('fileIn').click(); } });
+['dragenter', 'dragover'].forEach(t => $('drop').addEventListener(t, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => $('drop').addEventListener(t, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => addFiles([...(e.dataTransfer?.files || [])]));
 
 // ================= Chat =================
 function renderChatSel(){
@@ -890,7 +1181,11 @@ function renderChat(liveText){
   const box = $('msgs'); box.replaceChildren();
   const list = chats[chatId] || [];
   if (!list.length) box.append(el('p', 'note', chatId === 'director' ? 'Habla con el jefe: pregúntale por el equipo o pídele un trabajo.' : `Escríbele a ${a.name}. Conoce su especialidad y su último trabajo.`));
-  for (const m of list) box.append(el('div', 'msg ' + m.r, m.t));
+  for (const m of list){
+    const d = el('div', 'msg ' + m.r, m.t);
+    if (m.r === 'a' && m.m){ const meta = el('div', 'meta'); meta.append(el('span', 'chip m-' + m.m, TIER_LABEL[m.m] || m.m)); if (m.k) meta.append(el('span', 'chip', `≈${fmtTok(m.k)} tokens`)); d.append(meta); }
+    box.append(d);
+  }
   if (liveText !== undefined){ const d = el('div', 'msg a', liveText || '…'); d.id = 'live'; box.append(d); }
   box.lastElementChild?.scrollIntoView({block:'nearest'});
 }
@@ -899,7 +1194,7 @@ async function openChat(id){
   chatId = id; $('chatSel').value = id; show('chat'); renderChat();
   if (!chats[id]){
     chats[id] = [];
-    if (db){ try { const s = await db.doc('chats/' + id).get(); if (s.exists && Array.isArray(s.data().msgs)) chats[id] = s.data().msgs.filter(m => m && (m.r === 'u' || m.r === 'a') && typeof m.t === 'string'); } catch {} }
+    if (db){ try { const s = await db.doc('chats/' + id).get(); if (s.exists && Array.isArray(s.data().msgs)) chats[id] = s.data().msgs.filter(m => m && (m.r === 'u' || m.r === 'a') && typeof m.t === 'string').map(m => ({r:m.r, t:m.t, ...(TIER_LABEL[m.m] ? {m:m.m, k:Number(m.k) || 0} : {})})); } catch {} }
     if (chatId === id) renderChat();
   }
 }
@@ -919,9 +1214,13 @@ $('chatForm').addEventListener('submit', async ev => {
   try {
     const msgs = chats[id].slice(-12).map(m => ({role:m.r === 'u' ? 'user' : 'assistant', content:m.t}));
     while (msgs.length && msgs[0].role !== 'user') msgs.shift();
-    msgs[0] = {role:'user', content:systemFor(a) + '\n\n---\nMensaje de Julio: ' + msgs[0].content};
-    const r = await sample(msgs, {cache:false, modelTier:id === 'director' ? 'default' : 'quick', onText:({text}) => { const l = $('live'); if (l && chatId === id) l.textContent = text; }});
-    chats[id].push({r:'a', t:r.text});
+    const ctx = await docContext(docs.filter(d => selChat.has(d.id)), 24000);
+    msgs[0] = {role:'user', content:systemFor(a) + (ctx.text ? '\n\nDocumentos que Julio compartió contigo:' + ctx.text : '') + '\n\n---\nMensaje de Julio: ' + msgs[0].content};
+    const choice = $('chatModel').value;
+    const tier = choice !== 'auto' ? pickTier({quick:'rapido', default:'normal', complex:'avanzado'}[choice], 'auto')
+      : pickTier(id === 'director' || text.length > 800 || ctx.text || /```|código|codigo|sql|html|css|javascript|php|python/i.test(text) ? 'normal' : 'rapido', 'auto');
+    const r = await sample(msgs, {cache:false, modelTier:tier, ...(ctx.imgs.length ? {images:ctx.imgs} : {}), onText:({text}) => { const l = $('live'); if (l && chatId === id) l.textContent = text; }});
+    chats[id].push({r:'a', t:r.text, m:r.modelTierApplied || tier, k:msgs.reduce((n, x) => n + tok(x.content), 0) + tok(r.text) + ctx.imgs.length * 1500});
     if (db) db.doc('chats/' + id).set({msgs:chats[id].slice(-30)}).catch(() => {});
   } catch (e){ chats[id].push({r:'a', t:'(' + errMsg(e) + ')'}); }
   finally {
