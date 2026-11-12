@@ -1,0 +1,428 @@
+<title>Oficinas de Julio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the 3D building fills the left; a control desk (task, live log, result, history) runs down the right; stacks on phones. Deliberately a single night look. */
+:root{
+  --night:#0f1330; --night-2:#171c42; --panel:#1b2150; --line:#2f3770;
+  --ink:#eef0fb; --muted:#a3a9d6; --amber:#f5b942; --glass:#6fd3c9; --ok:#7ee08a; --bad:#ff8a7a;
+  --f-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 400px}
+.stage{position:relative;min-width:0;min-height:0;background:radial-gradient(ellipse at 50% 30%,var(--night-2),var(--night))}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.sign{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:16px;pointer-events:none}
+.sign h1{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,3vw,34px);letter-spacing:-.01em;margin:0;line-height:1.05;text-wrap:balance}
+.sign p{margin:4px 0 0;color:var(--muted);font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.hint{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:14px;color:var(--muted);font-size:12px;pointer-events:none}
+.card{position:absolute;right:16px;bottom:16px;width:min(320px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.card h3{margin:0;font-family:var(--f-display);font-size:18px;display:flex;align-items:center;gap:8px}
+.card .role{color:var(--amber);font-size:12px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.card p{margin:8px 0 0;color:var(--muted)}
+.card .last{margin-top:8px;max-height:140px;overflow:auto;white-space:pre-wrap;font-size:13px;color:var(--ink);border-top:1px solid var(--line);padding-top:8px}
+.card button{position:absolute;top:8px;right:8px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+
+.desk{min-width:0;min-height:0;overflow:auto;background:var(--night-2);border-left:1px solid var(--line);padding-block:18px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+.sec h2{font-family:var(--f-mono);font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
+label.lbl{display:block;font-family:var(--f-display);font-weight:700;font-size:20px;margin-bottom:8px}
+textarea{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;background:var(--night);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit}
+textarea:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 12px}
+button.primary{background:var(--amber);color:#2a1d00;border-color:var(--amber);font-weight:600;padding:9px 16px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.note{color:var(--muted);font-size:12.5px}
+.note.bad{color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.step{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.step .who{display:flex;align-items:center;gap:8px;font-weight:600}
+.step .st{margin-left:auto;font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:99px;border:1px solid currentColor}
+.st.esperando{color:var(--muted)} .st.trabajando{color:var(--amber)} .st.listo{color:var(--ok)} .st.error{color:var(--bad)}
+.step .enc{color:var(--muted);font-size:13px;margin-top:2px}
+.step .out{white-space:pre-wrap;font-size:13px;margin-top:6px;max-height:180px;overflow:auto}
+.new{font-family:var(--f-mono);font-size:10.5px;color:var(--glass);border:1px solid var(--glass);border-radius:99px;padding:1px 6px}
+.final{white-space:pre-wrap;background:var(--night);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13.5px;max-height:340px;overflow:auto}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hist button{width:100%;text-align:left;display:flex;gap:8px;justify-content:space-between}
+.hist .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hist time{font-family:var(--f-mono);font-size:11px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.roster{display:flex;flex-wrap:wrap;gap:6px}
+.roster button{display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:12.5px;border-radius:99px}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto}
+  html,body{height:auto}
+  .desk{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <div class="stage">
+    <canvas id="scene" aria-label="Edificio 3D con los agentes en sus escritorios"></canvas>
+    <div class="sign"><h1>Oficinas de Julio</h1><p id="headcount">Plantilla</p></div>
+    <div class="hint">Arrastra para girar · rueda o pellizco para acercar · toca un agente para ver su ficha</div>
+    <div class="card" id="card" hidden>
+      <button id="cardClose" aria-label="Cerrar ficha">✕</button>
+      <h3><span class="dot" id="cardDot"></span><span id="cardName"></span></h3>
+      <div class="role" id="cardRole"></div>
+      <p id="cardDesc"></p>
+      <div class="last" id="cardLast" hidden></div>
+    </div>
+  </div>
+
+  <aside class="desk">
+    <form class="sec" id="form">
+      <label class="lbl" for="task">¿Qué necesitas hoy?</label>
+      <textarea id="task" placeholder="Ej.: Hazme una página de inicio para mi proyecto de diagramas de bloque, con explicación y un ejemplo en C.">Hazme una página web sencilla que explique qué es un diagrama de flujo, con un ejemplo en C de un ciclo while.</textarea>
+      <div class="row">
+        <button class="primary" id="go" type="submit">Repartir tarea</button>
+        <span class="note" id="status">El director divide la tarea y cada agente hace su parte.</span>
+      </div>
+    </form>
+
+    <section class="sec">
+      <h2><span>Plantilla</span><span id="rosterCount"></span></h2>
+      <div class="roster" id="roster"></div>
+    </section>
+
+    <section class="sec" id="runSec" hidden>
+      <h2><span>En curso</span><span id="runPlan"></span></h2>
+      <ol class="steps" id="steps"></ol>
+    </section>
+
+    <section class="sec" id="finalSec" hidden>
+      <h2><span>Entrega final</span><button type="button" id="copy">Copiar</button></h2>
+      <div class="final" id="final"></div>
+    </section>
+
+    <section class="sec">
+      <h2><span>Historial</span></h2>
+      <ul class="hist" id="hist"><li class="note" id="histEmpty">Aquí aparecerán las tareas que termine la oficina.</li></ul>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- Staff ----------
+const BASE = [
+  {id:'director', name:'Dirección', role:'Director de la oficina', color:'#f5b942', desc:'Lee tu tarea, la divide en partes, la reparte y arma la entrega final. Si nadie sabe hacer algo, contrata a un especialista.'},
+  {id:'disenadora', name:'Diseño Web', role:'Diseñadora de páginas', color:'#ff7eb6', desc:'Estructura de páginas, HTML y CSS, colores, tipografía y que se vea bien en el celular.'},
+  {id:'programador', name:'Código', role:'Programador', color:'#6fd3c9', desc:'Lógica y código en C, Python o JavaScript: ciclos, funciones, estructuras de control y algoritmos.'},
+  {id:'redactor', name:'Redacción', role:'Redactor de contenido', color:'#b39dff', desc:'Textos claros en español: explicaciones, títulos, resúmenes y guiones.'},
+  {id:'investigador', name:'Investigación', role:'Investigador', color:'#8fc1ff', desc:'Reúne conceptos, definiciones y ejemplos correctos sobre el tema.'},
+  {id:'revisor', name:'Revisión', role:'Revisor de calidad', color:'#7ee08a', desc:'Busca errores en código y textos, y propone correcciones concretas.'},
+  {id:'consumo', name:'Consumo', role:'Asesor de consumo de Claude', color:'#ffb37a', desc:'Recomienda cómo hacer la tarea gastando menos uso: qué modelo, qué delegar y qué evitar.'}
+];
+const NEW_COLORS = ['#ffd36e','#5ee1ff','#ff9de2','#a8f07a','#c7a6ff','#ff8f8f','#7af0d2'];
+let custom = [];                 // hired agents, kept in db "agentes"
+const staff = () => [...BASE, ...custom];
+const lastOut = {};              // agentId -> last text produced (this visit)
+const byId = id => staff().find(a => a.id === id);
+
+// ---------- 3D ----------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x141a40);
+scene.fog = new THREE.Fog(0x141a40, 45, 110);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 300);
+camera.position.set(15, 10, 21);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 10; controls.maxDistance = 70;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 0.35;
+
+scene.add(new THREE.HemisphereLight(0x9aa6ff, 0x1a1530, 0.7));
+const moon = new THREE.DirectionalLight(0xcfd6ff, 0.6); moon.position.set(-20, 40, 20); scene.add(moon);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 48), new THREE.MeshStandardMaterial({color:0x151a3d, roughness:1}));
+ground.rotation.x = -Math.PI/2; scene.add(ground);
+// stars
+{ const g = new THREE.BufferGeometry(), p = [];
+  for (let i=0;i<500;i++){ const r=120, th=Math.random()*Math.PI*2, ph=Math.random()*Math.PI*0.45; p.push(r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph), r*Math.sin(ph)*Math.sin(th)); }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({color:0xdfe3ff, size:0.5}))); }
+
+const W = 16, D = 9, H = 3.4, PER_FLOOR = 4;
+const building = new THREE.Group(); scene.add(building);
+const agentsG = new THREE.Group(); scene.add(agentsG);
+const figures = {}; // id -> {group, body, screen, ring, lamp}
+
+function label(text, color){
+  const c = document.createElement('canvas'); c.width = 512; c.height = 112;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(15,19,48,.82)'; x.beginPath(); x.roundRect ? x.roundRect(6,10,500,92,46) : x.rect(6,10,500,92); x.fill();
+  x.strokeStyle = color; x.lineWidth = 5; x.stroke();
+  x.fillStyle = '#eef0fb'; x.font = '600 50px "IBM Plex Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(text.length > 18 ? text.slice(0,17)+'…' : text, 256, 58);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), depthTest:false, transparent:true}));
+  s.scale.set(2.6, 0.57, 1); s.renderOrder = 10; return s;
+}
+
+function buildTower(floors){
+  building.clear();
+  const glass = new THREE.MeshStandardMaterial({color:0x6fd3c9, transparent:true, opacity:0.09, side:THREE.DoubleSide, depthWrite:false});
+  const slabM = new THREE.MeshStandardMaterial({color:0x2a3170, roughness:0.8});
+  const edgeM = new THREE.LineBasicMaterial({color:0x6fd3c9, transparent:true, opacity:0.55});
+  for (let f=0; f<=floors; f++){
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 0.3, D), slabM); slab.position.y = f*H; building.add(slab);
+    if (f === floors) break;
+    const box = new THREE.BoxGeometry(W-0.1, H-0.3, D-0.1);
+    const shell = new THREE.Mesh(box, glass); shell.position.y = f*H + H/2; building.add(shell);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box), edgeM); edges.position.copy(shell.position); building.add(edges);
+    const lamp = new THREE.PointLight(0xffc46b, 0.9, 14); lamp.position.set(0, f*H + H-0.6, 0); building.add(lamp);
+  }
+  const roof = label('OFICINAS DE JULIO', '#f5b942'); roof.scale.set(7, 1.53, 1); roof.position.set(0, floors*H + 1.4, 0); building.add(roof);
+  controls.target.set(0, floors*H/2, 0);
+}
+
+function figure(a, i){
+  const g = new THREE.Group();
+  const f = Math.floor(i / PER_FLOOR), s = i % PER_FLOOR;
+  g.position.set(-W/2 + 2.2 + s*((W-4.4)/(PER_FLOOR-1)), f*H + 0.15, 0);
+  const col = new THREE.Color(a.color);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 1.1), new THREE.MeshStandardMaterial({color:0x3b4386, roughness:0.6}));
+  desk.position.set(0, 0.43, -1.3); g.add(desk);
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.08), new THREE.MeshStandardMaterial({color:0x111, emissive:col, emissiveIntensity:0.25}));
+  screen.position.set(0, 1.25, -1.25); g.add(screen);
+  const body = new THREE.Group();
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.48, 1.1, 20), new THREE.MeshStandardMaterial({color:col, roughness:0.5}));
+  torso.position.y = 0.75; body.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16), new THREE.MeshStandardMaterial({color:0xf3d9c0, roughness:0.7}));
+  head.position.y = 1.62; body.add(head);
+  body.position.z = 0.1; g.add(body);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 8, 40), new THREE.MeshBasicMaterial({color:0x5a6199}));
+  ring.rotation.x = Math.PI/2; ring.position.set(0, 0.03, 0.1); g.add(ring);
+  const tag = label(a.name, a.color); tag.position.set(0, 2.45, 0.1); g.add(tag);
+  g.traverse(o => o.userData.agentId = a.id);
+  agentsG.add(g);
+  figures[a.id] = {group:g, body, screen, ring, state:'idle'};
+}
+
+function rebuild(){
+  agentsG.clear(); for (const k in figures) delete figures[k];
+  const list = staff();
+  buildTower(Math.max(2, Math.ceil(list.length / PER_FLOOR)));
+  list.forEach(figure);
+  document.getElementById('headcount').textContent = `${list.length} agentes · ${Math.ceil(list.length/PER_FLOOR)} pisos`;
+  renderRoster();
+}
+
+function setState(id, state){
+  const fg = figures[id]; if (!fg) return;
+  fg.state = state;
+  fg.ring.material.color.set(state === 'working' ? 0xf5b942 : state === 'done' ? 0x7ee08a : state === 'error' ? 0xff8a7a : 0x5a6199);
+}
+
+function resize(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement);
+
+const clock = new THREE.Clock();
+(function loop(){
+  const t = clock.getElapsedTime();
+  for (const id in figures){
+    const fg = figures[id];
+    if (fg.state === 'working'){ fg.body.position.y = Math.abs(Math.sin(t*7))*0.18; fg.screen.material.emissiveIntensity = 0.6 + Math.sin(t*10)*0.35; fg.body.rotation.y = Math.sin(t*3)*0.25; }
+    else { fg.body.position.y = Math.sin(t*1.5 + id.length)*0.03; fg.screen.material.emissiveIntensity = fg.state === 'done' ? 0.7 : 0.25; fg.body.rotation.y *= 0.9; }
+  }
+  controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop);
+})();
+
+// click an agent -> card (ignore drags)
+const ray = new THREE.Raycaster(); let down = null;
+canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; controls.autoRotate = false; });
+canvas.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX-down[0], e.clientY-down[1]) > 6) return;
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1, y:-((e.clientY-r.top)/r.height)*2+1}, camera);
+  const hit = ray.intersectObjects(agentsG.children, true).find(h => h.object.userData.agentId);
+  if (hit) showCard(hit.object.userData.agentId);
+});
+function showCard(id){
+  const a = byId(id); if (!a) return;
+  document.getElementById('cardName').textContent = a.name;
+  document.getElementById('cardRole').textContent = a.role + (a.hired ? ' · contratado' : '');
+  document.getElementById('cardDesc').textContent = a.desc;
+  document.getElementById('cardDot').style.background = a.color;
+  const last = document.getElementById('cardLast');
+  last.hidden = !lastOut[id]; last.textContent = lastOut[id] || '';
+  document.getElementById('card').hidden = false;
+  const fg = figures[id]; if (fg){ const p = new THREE.Vector3(); fg.group.getWorldPosition(p); controls.target.set(p.x, p.y + 1, p.z); }
+}
+document.getElementById('cardClose').onclick = () => document.getElementById('card').hidden = true;
+
+function renderRoster(){
+  const el = document.getElementById('roster'); el.replaceChildren();
+  for (const a of staff()){
+    const b = document.createElement('button'); b.type = 'button';
+    const d = document.createElement('span'); d.className = 'dot'; d.style.background = a.color;
+    b.append(d, document.createTextNode(a.name)); b.title = a.role; b.onclick = () => showCard(a.id);
+    el.append(b);
+  }
+  document.getElementById('rosterCount').textContent = `${staff().length} · ${custom.length} contratados`;
+}
+
+rebuild();
+
+// ---------- Claude + storage ----------
+let sample = null, db = null;
+const $ = id => document.getElementById(id);
+const status = (msg, bad) => { $('status').textContent = msg; $('status').className = 'note' + (bad ? ' bad' : ''); };
+
+(async () => {
+  const use = n => window.claude?.use ? window.claude.use(n) : Promise.resolve(null);
+  [sample, db] = await Promise.all([use('sample'), use('db')]);
+  if (!sample){ $('go').disabled = true; status('Para que la oficina trabaje, abre esta página en claude.ai con tu sesión iniciada.', true); }
+  if (db){
+    const timer = setTimeout(() => status('No pude cargar la plantilla guardada todavía; trabajo con la plantilla base.', true), 10000);
+    db.collection('agentes').onSnapshot(snap => {
+      clearTimeout(timer);
+      custom = snap.docs.map(d => ({...d.data(), id:d.id, hired:true})).filter(a => a.name && a.role);
+      rebuild();
+    }, () => clearTimeout(timer));
+    db.collection('tareas').orderBy('creada', 'desc').limit(12).onSnapshot(snap => renderHist(snap.docs.map(d => ({id:d.id, ...d.data()}))), () => {});
+  }
+})();
+
+function renderHist(items){
+  const ul = $('hist'); ul.replaceChildren();
+  if (!items.length){ const li = document.createElement('li'); li.className = 'note'; li.textContent = 'Aquí aparecerán las tareas que termine la oficina.'; ul.append(li); return; }
+  for (const it of items){
+    const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button';
+    const t = document.createElement('span'); t.className = 't'; t.textContent = it.texto || '(sin texto)';
+    const tm = document.createElement('time'); tm.textContent = it.creada ? new Date(it.creada).toLocaleDateString('es', {day:'2-digit', month:'short'}) : '';
+    b.append(t, tm); b.onclick = () => showPast(it); li.append(b); ul.append(li);
+  }
+}
+function showPast(it){
+  $('runSec').hidden = false; $('runPlan').textContent = it.estado || '';
+  $('steps').replaceChildren(...(it.pasos || []).map(p => stepEl(byId(p.agente) || {name:p.agente, color:'#888'}, p.encargo, p.resultado, 'listo')));
+  $('finalSec').hidden = !it.final; $('final').textContent = it.final || '';
+}
+
+function stepEl(a, encargo, out, st, isNew){
+  const li = document.createElement('li'); li.className = 'step';
+  const who = document.createElement('div'); who.className = 'who';
+  const d = document.createElement('span'); d.className = 'dot'; d.style.background = a.color;
+  const n = document.createElement('span'); n.textContent = a.name;
+  who.append(d, n);
+  if (isNew){ const nw = document.createElement('span'); nw.className = 'new'; nw.textContent = 'nuevo'; who.append(nw); }
+  const s = document.createElement('span'); s.className = 'st ' + st; s.textContent = st; who.append(s);
+  const e = document.createElement('div'); e.className = 'enc'; e.textContent = encargo;
+  const o = document.createElement('div'); o.className = 'out'; o.textContent = out || '';
+  li.append(who, e, o); li._st = s; li._out = o; return li;
+}
+const mark = (li, st) => { li._st.className = 'st ' + st; li._st.textContent = st; };
+
+const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'agente';
+const clip = (s, n) => String(s || '').slice(0, n);
+
+function errMsg(e){
+  if (e?.code === 'not_granted') return 'No se dio permiso para usar Claude en esta página.';
+  if (e?.code === 'rate_limited') return 'Claude pidió una pausa por límite de uso. Espera un momento y vuelve a intentar.';
+  return 'Algo falló: ' + (e?.message || e);
+}
+
+let busy = false;
+$('form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const texto = $('task').value.trim();
+  if (!texto || busy || !sample) return;
+  busy = true; $('go').disabled = true;
+  $('card').hidden = true; $('finalSec').hidden = true; $('runSec').hidden = false; $('steps').replaceChildren(); $('runPlan').textContent = '';
+  for (const id in figures) setState(id, 'idle');
+  let taskRef = null;
+  try {
+    // 1. Director plans
+    setState('director', 'working'); status('El director está leyendo tu tarea…');
+    const plantilla = staff().filter(a => a.id !== 'director').map(a => ({id:a.id, nombre:a.name, rol:a.role, especialidad:a.desc}));
+    const plan = await sample.json(
+`Eres el director de "Oficinas de Julio", una oficina de agentes de IA.
+Plantilla actual (JSON): ${JSON.stringify(plantilla)}
+Tarea del jefe: """${texto}"""
+
+Divide la tarea en 2 a 5 pasos en orden y asigna cada paso a un agente de la plantilla.
+Si ningún agente está especializado en una parte, contrata uno nuevo (máximo 2) en "nuevos".
+No te asignes pasos a ti. Responde SOLO con JSON con esta forma:
+{"resumen":"una frase","nuevos":[{"id":"kebab-case","nombre":"Nombre corto","rol":"Rol","especialidad":"qué sabe hacer, una frase"}],"pasos":[{"agente":"id","encargo":"qué debe hacer, una o dos frases"}]}`,
+      {modelTier:'default', cache:false});
+
+    // 2. Hire new agents (validated: the model's output is untrusted)
+    const hired = [];
+    for (const n of (Array.isArray(plan?.nuevos) ? plan.nuevos : []).slice(0, 2)){
+      if (!n?.nombre || !n?.rol) continue;
+      let id = 'a-' + slug(n.id || n.nombre); while (byId(id)) id += '-2';
+      const a = {id, name:clip(n.nombre, 24), role:clip(n.rol, 60), desc:clip(n.especialidad, 240), color:NEW_COLORS[(custom.length + hired.length) % NEW_COLORS.length], creado:Date.now(), hired:true};
+      hired.push({a, oldId:n.id});
+    }
+    if (hired.length){
+      custom = [...custom, ...hired.map(h => h.a)]; rebuild();
+      if (db) for (const {a} of hired){ const {id, hired:_, ...data} = a; db.collection('agentes').doc(id).set(data).catch(() => {}); }
+    }
+    const remap = Object.fromEntries(hired.flatMap(h => [[h.oldId, h.a.id], [h.a.name, h.a.id]]));
+    const pasos = (Array.isArray(plan?.pasos) ? plan.pasos : []).map(p => ({agente: byId(p?.agente) ? p.agente : remap[p?.agente], encargo: clip(p?.encargo, 400)}))
+      .filter(p => p.agente && p.agente !== 'director' && p.encargo).slice(0, 5);
+    if (!pasos.length) throw new Error('El director no pudo armar un plan. Prueba a describir la tarea con más detalle.');
+    setState('director', 'done');
+    $('runPlan').textContent = clip(plan.resumen, 80);
+    const els = pasos.map(p => { const li = stepEl(byId(p.agente), p.encargo, '', 'esperando', hired.some(h => h.a.id === p.agente)); $('steps').append(li); return li; });
+
+    if (db) taskRef = await db.collection('tareas').add({texto:clip(texto, 2000), creada:Date.now(), estado:'trabajando', pasos:[], final:''}).catch(() => null);
+
+    // 3. Each agent does its part, in order, seeing teammates' work
+    const done = [];
+    for (let i = 0; i < pasos.length; i++){
+      const p = pasos[i], a = byId(p.agente), li = els[i];
+      setState(a.id, 'working'); mark(li, 'trabajando'); status(`${a.name} está trabajando…`);
+      const previo = done.map(x => `### ${byId(x.agente).name}\n${x.resultado}`).join('\n\n') || '(eres el primero)';
+      const r = await sample(
+`Eres "${a.name}", ${a.role} en Oficinas de Julio. Tu especialidad: ${a.desc}
+Tarea general del jefe: """${texto}"""
+Trabajo que ya hicieron tus compañeros:
+${previo}
+
+Tu encargo: ${p.encargo}
+Haz solo tu parte, en español, concreta y lista para usar (máximo 300 palabras; si es código, entrégalo completo).`,
+        {modelTier:'quick', cache:false, onText:({text}) => { li._out.textContent = text; }});
+      li._out.textContent = r.text; lastOut[a.id] = r.text;
+      done.push({agente:a.id, encargo:p.encargo, resultado:r.text});
+      setState(a.id, 'done'); mark(li, 'listo');
+    }
+
+    // 4. Director assembles the delivery
+    setState('director', 'working'); status('El director está armando la entrega final…');
+    $('finalSec').hidden = false; $('final').textContent = '';
+    const fin = await sample(
+`Eres el director de Oficinas de Julio. Tarea del jefe: """${texto}"""
+Partes entregadas por tu equipo:
+${done.map(x => `### ${byId(x.agente).name}\n${x.resultado}`).join('\n\n')}
+
+Une todo en una sola entrega final, ordenada y lista para usar, en español. Corrige contradicciones. Si hay código, ponlo completo una sola vez.`,
+      {modelTier:'default', cache:false, onText:({text}) => { $('final').textContent = text; }});
+    $('final').textContent = fin.text; lastOut.director = fin.text;
+    setState('director', 'done'); status('Listo. La entrega está abajo.');
+    if (taskRef) await taskRef.update({estado:'listo', pasos:done, final:fin.text}).catch(() => {});
+  } catch (e){
+    status(errMsg(e), true);
+    for (const id in figures) if (figures[id].state === 'working') setState(id, 'error');
+    if (taskRef) taskRef.update({estado:'con error'}).catch(() => {});
+  } finally { busy = false; $('go').disabled = !sample; }
+});
+
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('final').textContent); $('copy').textContent = 'Copiado'; }
+  catch { const r = document.createRange(); r.selectNodeContents($('final')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('copy').textContent = 'Seleccionado'; }
+  setTimeout(() => $('copy').textContent = 'Copiar', 1500);
+};
+</script>
