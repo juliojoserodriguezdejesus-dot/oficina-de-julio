@@ -17,3 +17,6 @@ Mi oficina de agentes.
 - **Calidad** revisa cada entrega y la devuelve al agente si no cumple (hasta 2 correcciones).
 - **Aprobaciones:** al terminar, ves qué hizo cada agente, la nota de Calidad y las acciones irreversibles; tú apruebas o pides cambios.
 - **Biblioteca:** bóveda descargable para Obsidian (.zip) con agentes, departamentos, encargos y documentos enlazados.
+
+## Baúl de Obsidian
+La carpeta `boveda/Oficinas de Julio/` es una carpeta de notas de Obsidian con la sesión de creación, la guía de la oficina, la constitución, los departamentos y una nota por agente. Cópiala dentro de tu baúl (o usa Obsidian Git).
