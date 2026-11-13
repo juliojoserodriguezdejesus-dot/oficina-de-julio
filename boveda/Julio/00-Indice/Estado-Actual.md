@@ -8,6 +8,11 @@ tags: [indice, estado]
 
 > Lo actualiza cada agente o sesión al terminar una tarea o una jornada. Lo más reciente va arriba.
 
+## Proyecto House Cuts & Shaves · 2026-11-13
+- Proyecto de universidad de Julio (app web de citas con **árbol binario de búsqueda**). Repo: https://github.com/juliojoserodriguezdejesus-dot/house-cut-and-shaves
+- Documentado en [[Proyecto-House-Cuts-and-Shaves]] y guardado como documento en la Oficina 3D para que el Jefe y el equipo ya lo conozcan.
+- **La oficina solo lo trabaja cuando Julio lo pida explícitamente.** Por ahora, solo queda guardado.
+
 ## Skills y conectores de Claude Code · 2026-11-13
 - Instaladas 8 skills de diseño nuevas (choreograph, gestures, learn-taste, pick-ui-library, prototype, review-animations, impeccable, taste-skill) en ~/.claude/skills. Revisados los conectores de la cuenta: no hay tool para activarlos/desactivarlos desde la sesión, solo recomendación. → [[2026-11-13-ClaudeCode-skills-y-conectores]]
 

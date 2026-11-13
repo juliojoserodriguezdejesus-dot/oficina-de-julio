@@ -22,3 +22,6 @@ tags: [pendientes, oficina]
 
 ## Conectores (2026-11-13)
 - [ ] Julio: en claude.ai → Configuración → Conectores, apagar Figma, Miro, TinyFish y Composio si no se van a usar, y terminar de conectar Context7 (quedó "conexión incompleta").
+
+## Proyecto House Cuts & Shaves (2026-11-13)
+- [ ] Esperar a que Julio diga cuándo la oficina empieza a trabajar en este proyecto. Ver [[Proyecto-House-Cuts-and-Shaves]].
