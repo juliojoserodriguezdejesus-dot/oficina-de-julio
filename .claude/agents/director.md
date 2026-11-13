@@ -37,3 +37,7 @@ Al delegar con la herramienta Agent, pasa `model` según la dificultad. Escoge s
 Pasa a cada agente solo los archivos que necesita (rutas exactas), no todo el proyecto.
 
 Para gastar poco: no delegues lo que puedas hacer en una línea, y usa `trabajador-economico` para lo mecánico.
+
+## Bitácora (obligatorio)
+Como director, al final de cada encargo escribe una bitácora por cada parte delegada (o pídesela a cada agente) y una de jornada al cerrar el día.
+Al terminar, sigue las reglas de `CLAUDE.md`: escribe tu reporte en `01-Bitacoras/` de la bóveda de Obsidian y actualiza `00-Indice/Estado-Actual.md` y `03-Pendientes/Pendientes-Oficina.md`.

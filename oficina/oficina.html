@@ -1034,42 +1034,50 @@ function makeZip(files){                       // files: [{name, text}]
 }
 const safeName = t => String(t || 'nota').replace(/[\\/:*?"<>|#^[\]]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 70) || 'nota';
 const fm = o => '---\n' + Object.entries(o).map(([k, v]) => `${k}: ${Array.isArray(v) ? '[' + v.map(x => JSON.stringify(String(x))).join(', ') + ']' : JSON.stringify(String(v))}`).join('\n') + '\n---\n\n';
-const agentLink = a => `[[Agentes/${safeName(a.name)}|${a.name}]]`;
-const deptLink = d => `[[Departamentos/${safeName(d.name)}|${d.name}]]`;
+const agentLink = a => `[[02-Documentacion/Oficina-3D/Agentes/${safeName(a.name)}|${a.name}]]`;
+const deptLink = d => `[[02-Documentacion/Oficina-3D/Departamentos/${safeName(d.name)}|${d.name}]]`;
+const taskNote = t => `${new Date(t.creada || Date.now()).toISOString().slice(0, 10)}-Oficina3D-${safeName(clip(t.texto, 45))}`;
 function vaultNotes(){
   const notes = [], day = ts => new Date(ts || Date.now()).toISOString().slice(0, 10);
-  notes.push({group:'Inicio', path:'Inicio.md', title:'Inicio', md:fm({tipo:'indice'}) + '# Oficinas de Julio\n\nAgencia de páginas web con agentes de IA.\n\n- [[Constitución]]\n\n## Departamentos\n' + depts().filter(d => members(d.id).length).map(d => '- ' + deptLink(d)).join('\n') + '\n\n## Encargos\n' + tasks.map(t => `- [[Encargos/${day(t.creada)} ${safeName(clip(t.texto, 50))}]]`).join('\n') + '\n'});
-  notes.push({group:'Inicio', path:'Constitución.md', title:'Constitución', md:fm({tipo:'constitucion'}) + '# Constitución\n\nLa lleva cada agente antes de cada tarea.\n\n' + CONSTITUCION.map((r, i) => `${i + 1}. **${r[0]}:** ${r[1]}`).join('\n') + '\n'});
+  const pend = tasks.filter(t => t.aprobacion?.estado === 'pendiente');
+  notes.push({group:'Índice', path:'00-Indice/Estado-Oficina-3D.md', title:'Estado-Oficina-3D', md:fm({tipo:'estado', actualizado:day()}) +
+    `# Estado de la Oficina 3D\n\nExportado el ${day()}. Estado general: [[Estado-Actual]] · Documentación: [[Oficina-Agentes]]\n\n- Agentes: ${staff().length} en ${depts().filter(d => members(d.id).length).length} departamentos (${custom.length} contratados)\n- Encargos: ${tasks.length} · por aprobar: ${pend.length} · aprobados: ${tasks.filter(t => t.aprobacion?.estado === 'aprobado').length}\n- Tokens aproximados: ${fmtTok(tasks.reduce((n, t) => n + (Number(t.tokens) || 0), 0))}\n\n## Últimos encargos\n` +
+    tasks.slice(0, 15).map(t => `- [[${taskNote(t)}]] · ${STATUS[t.aprobacion?.estado] || t.estado || ''}`).join('\n') + '\n\n## Pendientes\n[[Pendientes-Oficina3D]]\n'});
+  const pl = tasks.flatMap(t => { const ap = t.aprobacion || {}, link = `[[${taskNote(t)}]]`;
+    return [...(ap.estado === 'pendiente' ? [`- [ ] Aprobar o pedir cambios: ${link}`] : []), ...(ap.pendientes || []).map(x => `- [ ] ${x} (${link})`),
+            ...(ap.irreversibles || []).filter(x => !(ap.irreversiblesAprobadas || []).includes(x)).map(x => `- [ ] Irreversible sin autorizar: ${x} (${link})`)]; });
+  notes.push({group:'Índice', path:'03-Pendientes/Pendientes-Oficina3D.md', title:'Pendientes-Oficina3D', md:fm({tipo:'pendientes', actualizado:day()}) + `# Pendientes de la Oficina 3D\n\nVer también [[Pendientes-Oficina]] y [[Estado-Actual]].\n\n${pl.join('\n') || '_Nada pendiente._'}\n`});
+  notes.push({group:'Índice', path:'02-Documentacion/Oficina-3D/Constitución.md', title:'Constitución', md:fm({tipo:'constitucion'}) + '# Constitución\n\nLa lleva cada agente antes de cada tarea.\n\n' + CONSTITUCION.map((r, i) => `${i + 1}. **${r[0]}:** ${r[1]}`).join('\n') + '\n'});
   for (const d of depts()){ const ms = members(d.id); if (!ms.length) continue;
-    notes.push({group:'Departamentos', path:`Departamentos/${safeName(d.name)}.md`, title:d.name, md:fm({tipo:'departamento'}) + `# ${d.name}\n\n${d.desc}\n\n## Agentes\n` + ms.map(a => `- ${agentLink(a)} · ${a.role}`).join('\n') + '\n'}); }
+    notes.push({group:'Departamentos', path:`02-Documentacion/Oficina-3D/Departamentos/${safeName(d.name)}.md`, title:d.name, md:fm({tipo:'departamento'}) + `# ${d.name}\n\n${d.desc}\n\n## Agentes\n` + ms.map(a => `- ${agentLink(a)} · ${a.role}`).join('\n') + '\n'}); }
   for (const a of staff()){ const f = ficha(a.id), d = deptOf(a.dept) || {name:''};
-    notes.push({group:'Agentes', path:`Agentes/${safeName(a.name)}.md`, title:a.name, md:fm({tipo:'agente', rol:a.role, departamento:d.name, cerebro:TIER_LABEL[f.cerebro] || 'Automático', encargos:f.tareas || 0}) +
+    notes.push({group:'Agentes', path:`02-Documentacion/Oficina-3D/Agentes/${safeName(a.name)}.md`, title:a.name, md:fm({tipo:'agente', rol:a.role, departamento:d.name, cerebro:TIER_LABEL[f.cerebro] || 'Automático', encargos:f.tareas || 0}) +
       `# ${a.name}\n\n**Rol:** ${a.role}  \n**Departamento:** ${deptLink(d)}\n\n## Qué hace\n${a.desc}\n\n## Cómo trabaja\n${a.how || ''}\n\n## Herramientas\n${TOOLS_BASE.map(t => '- ' + t).join('\n')}\n\n## Memoria\n${(f.memoria || []).map(m => `- ${m.t} _(${day(m.f)}${m.src ? ', ' + m.src.replace(/\n/g, ' ') : ''})_`).join('\n') || '_Vacía_'}\n\nSigue la [[Constitución]].\n`}); }
   for (const t of tasks){ const ap = t.aprobacion || {};
-    notes.push({group:'Encargos', path:`Encargos/${day(t.creada)} ${safeName(clip(t.texto, 50))}.md`, title:`${day(t.creada)} ${clip(t.texto, 50)}`,
-      md:fm({tipo:'encargo', fecha:day(t.creada), estado:t.estado || '', tokens:t.tokens || 0, agentes:(t.pasos || []).map(x => byId(x.agente)?.name || x.agente)}) +
-      `# Encargo\n\n${t.texto}\n\n## Aprobación\n${ap.resumen || ''}\n\n- Estado: ${STATUS[ap.estado] || ap.estado || 'sin revisión'}\n${(ap.irreversibles || []).map(x => '- Irreversible: ' + x).join('\n')}\n\n## Qué hizo cada agente\n` +
+    notes.push({group:'Bitácoras', path:`01-Bitacoras/${taskNote(t)}.md`, title:taskNote(t),
+      md:fm({tipo:'bitacora', origen:'Oficina 3D', fecha:day(t.creada), estado:t.estado || '', tokens:t.tokens || 0, agentes:(t.pasos || []).map(x => byId(x.agente)?.name || x.agente)}) +
+      `# Bitácora · ${clip(t.texto, 80)}\n\nEstado general: [[Estado-Actual]] · Pendientes: [[Pendientes-Oficina3D]]\n\n## Encargo\n${t.texto}\n\n## Aprobación\n${ap.resumen || ''}\n\n- Estado: ${STATUS[ap.estado] || ap.estado || 'sin revisión'}\n${(ap.irreversibles || []).map(x => '- Irreversible: ' + x).join('\n')}\n\n## Qué hizo cada agente\n` +
       (t.pasos || []).map(x => { const a = byId(x.agente) || {name:x.agente}; return `### ${agentLink(a)}\n_${x.encargo}_ · Calidad ${x.calidad?.nota ?? '—'}/10\n\n${x.resultado}`; }).join('\n\n') + `\n\n## Entrega final\n\n${t.final || ''}\n`}); }
-  for (const d of docs) if (d.texto) notes.push({group:'Documentos', path:`Documentos/${safeName(d.nombre)}.md`, title:d.nombre, md:fm({tipo:'documento', archivo:d.nombre}) + `# ${d.nombre}\n\n${d.texto}\n`});
+  for (const d of docs) if (d.texto) notes.push({group:'Documentos', path:`02-Documentacion/Oficina-3D/Documentos/${safeName(d.nombre)}.md`, title:d.nombre, md:fm({tipo:'documento', archivo:d.nombre}) + `# ${d.nombre}\n\n${d.texto}\n`});
   return notes;
 }
-let libSel = 'Constitución.md';
+let libSel = '00-Indice/Estado-Oficina-3D.md';
 function renderLibrary(){
   const s = $('s-biblioteca'); s.replaceChildren();
   const notes = vaultNotes();
-  s.append(el('p', 'lead', 'La memoria de la oficina en notas compatibles con Obsidian: agentes, departamentos, encargos, documentos y la constitución, enlazados entre sí con [[enlaces]].'));
+  s.append(el('p', 'lead', 'Tu bóveda de Obsidian (C:\\Users\\josue\\Obsidian\\Julio) con la misma estructura de carpetas: cada encargo es una bitácora en 01-Bitacoras, los pendientes van a 03-Pendientes y el estado a 00-Indice.'));
   const row = el('div', 'row'); row.style.marginTop = '0';
-  const zb = el('button', 'b primary', 'Descargar bóveda para Obsidian (.zip)'); zb.type = 'button'; zb.onclick = () => downloadVault(zb);
+  const zb = el('button', 'b primary', 'Descargar para mi bóveda (.zip)'); zb.type = 'button'; zb.onclick = () => downloadVault(zb);
   row.append(zb, el('span', 'note', `${notes.length} notas`)); s.append(row);
-  s.append(el('p', 'note', 'En Obsidian: descomprime el .zip y elige “Abrir carpeta como bóveda”. Para traer notas tuyas de Obsidian a la oficina, súbelas en Documentos (.md).'));
+  s.append(el('p', 'note', 'Descomprime el .zip dentro de C:\\Users\\josue\\Obsidian\\Julio: las carpetas se juntan con las tuyas y no reemplaza tu Estado-Actual.md. Para traer notas de tu bóveda a la oficina, súbelas en Documentos (.md).'));
   const lib = el('div', 'lib'), nav = el('div');
-  for (const g of ['Inicio', 'Departamentos', 'Agentes', 'Encargos', 'Documentos']){
+  for (const g of ['Índice', 'Bitácoras', 'Departamentos', 'Agentes', 'Documentos']){
     const ns = notes.filter(n => n.group === g); if (!ns.length) continue;
-    const sec = el('details'); sec.open = g === 'Inicio'; sec.append(el('summary', 'note', `${g} (${ns.length})`));
+    const sec = el('details'); sec.open = g === 'Índice'; sec.append(el('summary', 'note', `${g} (${ns.length})`));
     const ul = el('ul'); for (const n of ns){ const li = el('li'), b = el('button', 'n', n.title); b.type = 'button'; b.setAttribute('aria-pressed', String(n.path === libSel)); b.onclick = () => { libSel = n.path; renderLibrary(); }; li.append(b); ul.append(li); }
     sec.append(ul); nav.append(sec);
   }
-  const cur = notes.find(n => n.path === libSel) || notes[1];
+  const cur = notes.find(n => n.path === libSel) || notes[0];
   const view = el('div', 'sec'); view.append(el('h3', null, cur.path), el('pre', 'notepre', cur.md));
   const vr = el('div', 'row');
   const cp = el('button', 'b sm', 'Copiar nota'); cp.type = 'button'; cp.onclick = async () => { try { await navigator.clipboard.writeText(cur.md); cp.textContent = 'Copiada'; } catch { cp.textContent = 'No se pudo copiar'; } };
@@ -1082,7 +1090,7 @@ async function downloadVault(btn){
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Preparando…';
   try {
     if (!downloads) throw {code:'unavailable'};
-    await downloads.save({filename:'oficinas-de-julio-obsidian.zip', data:makeZip(vaultNotes().map(n => ({name:'Oficinas de Julio/' + n.path, text:n.md})))});
+    await downloads.save({filename:'boveda-julio-oficina.zip', data:makeZip(vaultNotes().map(n => ({name:n.path, text:n.md})))});
     btn.textContent = 'Bóveda descargada';
   } catch (e){
     btn.textContent = e?.code === 'declined' ? old : e?.code === 'rejected_extension' ? 'Tu navegador no deja bajar .zip: baja las notas una por una' : e?.code === 'unavailable' ? 'Descargas no disponibles en esta vista' : 'No se pudo: ' + (e?.message || e?.code || e);
@@ -1478,7 +1486,7 @@ async function saveApproval(patch, estadoTarea){
 $('apOk').onclick = async () => {
   const ok = [...$('apBody').querySelectorAll('.irr input:checked')].map(cb => apTask.aprobacion.irreversibles[+cb.dataset.i]);
   await saveApproval({estado:'aprobado', aprobadoEn:Date.now(), irreversiblesAprobadas:ok}, 'aprobado');
-  closeApproval(); status('Aprobaste la entrega.' + (ok.length ? ` Autorizaste ${ok.length} acción(es) irreversible(s).` : ''));
+  closeApproval(); status('Aprobaste la entrega.' + (ok.length ? ` Autorizaste ${ok.length} acción(es) irreversible(s).` : '') + ' Su bitácora ya está en Biblioteca para tu bóveda.');
 };
 $('apChange').onclick = () => { $('apChangeBox').hidden = false; $('apComments').focus(); };
 $('apLater').onclick = closeApproval;

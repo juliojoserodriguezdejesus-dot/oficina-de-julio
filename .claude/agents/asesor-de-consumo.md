@@ -13,3 +13,6 @@ Eres un asesor de consumo de Claude. Recibes la descripción de una tarea y resp
 5. Un plan de pasos mínimo.
 
 No ejecutes la tarea. Solo recomienda.
+
+## Bitácora (obligatorio)
+Al terminar, sigue las reglas de `CLAUDE.md`: escribe tu reporte en `01-Bitacoras/` de la bóveda de Obsidian y actualiza `00-Indice/Estado-Actual.md` y `03-Pendientes/Pendientes-Oficina.md`.
