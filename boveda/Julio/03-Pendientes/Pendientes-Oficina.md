@@ -19,3 +19,6 @@ tags: [pendientes, oficina]
 
 ## Ideas
 - [ ] Conectar la PC con Remote Control para que las sesiones en la nube escriban directo en la bóveda.
+
+## Conectores (2026-11-13)
+- [ ] Julio: en claude.ai → Configuración → Conectores, apagar Figma, Miro, TinyFish y Composio si no se van a usar, y terminar de conectar Context7 (quedó "conexión incompleta").
